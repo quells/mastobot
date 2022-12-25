@@ -22,23 +22,14 @@ func newClient() (*client, error) {
 	}, nil
 }
 
-func (c *client) followingRedirects() *client {
-	return &client{
-		Client: http.Client{
-			Jar: c.Client.Jar,
-		},
-	}
+func (c *client) followRedirects() {
+	c.Client.CheckRedirect = nil
 }
 
 func ignoreRedirects(_ *http.Request, _ []*http.Request) error {
 	return http.ErrUseLastResponse
 }
 
-func (c *client) ignoringRedirects() *client {
-	return &client{
-		Client: http.Client{
-			Jar:           c.Client.Jar,
-			CheckRedirect: ignoreRedirects,
-		},
-	}
+func (c *client) ignoreRedirects() {
+	c.Client.CheckRedirect = ignoreRedirects
 }
