@@ -2,13 +2,16 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
 	"os"
 	"sync"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -18,11 +21,11 @@ var (
 
 func shutdown() {
 	shutdownOnce.Do(func() {
-		log.Debug().Msg("running shutdown funcs")
+		log.Debug().Msg("starting shutdown sequence")
 		for _, f := range shutdownFuncs {
 			f()
 		}
-		log.Debug().Msg("finished shutdown funcs")
+		log.Debug().Msg("finished shutdown sequence")
 	})
 }
 
@@ -39,7 +42,9 @@ func must(err error) {
 }
 
 var (
-	connStr  string
+	connStr string
+	db      *sql.DB
+
 	instance string
 	timeout  time.Duration
 
@@ -62,17 +67,28 @@ var rootCmd = &cobra.Command{
 		if vv {
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
 		}
+
+		var err error
+		db, err = sql.Open("sqlite3", connStr)
+		must(err)
+		registerShutdown(func() {
+			log.Debug().Msg("closing database connection")
+			if cErr := db.Close(); cErr != nil {
+				log.Error().Err(err).Msg("failed to close database connection")
+			}
+		})
+		must(db.Ping())
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&connStr, "db", "mastobot.db", "sqlite database connection string")
+	rootCmd.PersistentFlags().StringVar(&connStr, "db", "file:mastobot.db?_busy_timeout=5000&_journal_mode=WAL", "sqlite database connection string")
 	rootCmd.PersistentFlags().StringVar(&instance, "instance", "", "Mastodon (or compatible) instance to interact with")
 	must(rootCmd.MarkPersistentFlagRequired("instance"))
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 10*time.Second, "Request timeout")
 
-	rootCmd.PersistentFlags().BoolVar(&v, "v", false, "Log info level")
-	rootCmd.PersistentFlags().BoolVar(&vv, "vv", false, "Log debug level")
+	rootCmd.PersistentFlags().BoolVarP(&v, "log_info", "v", false, "Log info level")
+	rootCmd.PersistentFlags().BoolVarP(&vv, "log_debug", "V", false, "Log debug level")
 }
 
 func Execute() {
