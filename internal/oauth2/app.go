@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+
 	"github.com/doug-martin/goqu/v9"
 	"github.com/quells/mastobot/internal/dbcontext"
 	"github.com/rs/zerolog/log"
-	"io"
-	"net/http"
-	"net/http/cookiejar"
-	"net/url"
 )
 
 const (
@@ -80,38 +80,89 @@ func RegisterApp(ctx context.Context, instance, appName string) (err error) {
 	return nil
 }
 
-func GetAccessToken(ctx context.Context, instance, appName, username, password string) (err error) {
+func GetAccessToken(ctx context.Context, instance, appName, email, password string) (err error) {
+	var c *client
+	c, err = newClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	var db *sql.DB
+	db, err = dbcontext.From(ctx)
+	if err != nil {
+		return err
+	}
+
+	var query string
+	var params []any
+	query, params, err = goqu.
+		Select("client_id", "client_secret").
+		From("apps").
+		Where(goqu.Ex{
+			"instance": instance,
+			"app_name": appName,
+		}).
+		ToSQL()
+	if err != nil {
+		return err
+	}
+	log.Debug().Msg(query)
+
+	var clientID, clientSecret string
+	err = db.QueryRow(query, params...).Scan(&clientID, &clientSecret)
+	if err != nil {
+		return err
+	}
+
+	err = c.getOAuthCookies(instance, clientID)
+	if err != nil {
+		return err
+	}
+
+	var signinLocation string
+	signinLocation, err = c.signin(instance, email, password)
+	if err != nil {
+		return err
+	}
+	log.Debug().Str("location", signinLocation).Msg("sign-in location")
+
+	var code string
+	code, err = c.getOAuthCode(instance, signinLocation)
+	if err != nil {
+		return err
+	}
+	log.Debug().Str("code", code).Msg("sign-in code")
+
+	var token string
+	token, err = c.getOAuthToken(instance, clientID, clientSecret, code)
+	if err != nil {
+		return err
+	}
+	log.Debug().Str("token", token).Msg("access token")
+
+	var stmt string
+	stmt, params, err = goqu.
+		Update("apps").
+		Set(goqu.Record{
+			"access_token": token,
+		}).
+		Where(goqu.Ex{
+			"instance": instance,
+			"app_name": appName,
+		}).
+		ToSQL()
+	if err != nil {
+		return err
+	}
+	log.Debug().Msg(stmt)
+
+	_, err = db.ExecContext(ctx, stmt, params...)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
-
-//func example() {
-//	app, err := registerApp(HostName, AppName)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	jar, err := getOAuthCookies(HostName, app.ClientID)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	location, err := signin(HostName, jar, Username, Password)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	code, err := getOAuthCode(HostName, location, jar)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	token, err := getOAuthToken(HostName, app.ClientID, app.ClientSecret, code)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	log.Println(token)
-//}
 
 type registerAppResponse struct {
 	AppID        string `json:"id"`
@@ -135,6 +186,9 @@ func (c *client) registerApp(instance, appName string) (result registerAppRespon
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		log.Debug().Msg(string(respBody))
 		return result, fmt.Errorf("got status %d while registering app", resp.StatusCode)
 	}
 
@@ -149,7 +203,7 @@ func (c *client) registerApp(instance, appName string) (result registerAppRespon
 	return result, err
 }
 
-func (c *client) getOAuthCookies(hostname, clientID string) (jar http.CookieJar, err error) {
+func (c *client) getOAuthCookies(instance, clientID string) (err error) {
 	c.ignoreRedirects()
 
 	q := make(url.Values)
@@ -158,38 +212,35 @@ func (c *client) getOAuthCookies(hostname, clientID string) (jar http.CookieJar,
 	q.Set("redirect_uri", oauthOOB)
 	q.Set("scope", "read write")
 
-	u := fmt.Sprintf("https://%s/oauth/authorize?%s", hostname, q.Encode())
+	u := fmt.Sprintf("https://%s/oauth/authorize?%s", instance, q.Encode())
 	var req *http.Request
 	req, err = http.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var resp *http.Response
 	resp, err = c.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if resp.StatusCode != http.StatusSeeOther {
-		return nil, fmt.Errorf("got status %d while getting oauth2 cookies", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		log.Debug().Msg(string(respBody))
+		return fmt.Errorf("got status %d while getting oauth2 cookies", resp.StatusCode)
 	}
 
-	jar, err = cookiejar.New(nil)
-	if err != nil {
-		return nil, err
-	}
-	jar.SetCookies(req.URL, resp.Cookies())
-
-	return jar, nil
+	return nil
 }
 
-func (c *client) signin(hostname string, jar http.CookieJar, username, password string) (location string, err error) {
+func (c *client) signin(instance string, email, password string) (location string, err error) {
 	c.ignoreRedirects()
 
-	u := fmt.Sprintf("https://%s/auth/sign_in", hostname)
+	u := fmt.Sprintf("https://%s/auth/sign_in", instance)
 	f := make(url.Values)
-	f.Set("username", username)
+	f.Set("username", email)
 	f.Set("password", password)
 
 	var resp *http.Response
@@ -199,18 +250,18 @@ func (c *client) signin(hostname string, jar http.CookieJar, username, password 
 	}
 
 	if resp.StatusCode != http.StatusFound {
-		return "", fmt.Errorf("got status %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		log.Debug().Msg(string(respBody))
+		return "", fmt.Errorf("got status %d while signing in", resp.StatusCode)
 	}
-
-	uu, _ := url.Parse(u)
-	jar.SetCookies(uu, resp.Cookies())
 
 	return resp.Header.Get("Location"), nil
 }
 
-func (c *client) getOAuthCode(hostname, location string, jar http.CookieJar) (code string, err error) {
+func (c *client) getOAuthCode(instance, location string) (code string, err error) {
 	c.ignoreRedirects()
-	u := fmt.Sprintf("https://%s%s", hostname, location)
+	u := fmt.Sprintf("https://%s%s", instance, location)
 
 	var resp *http.Response
 	resp, err = c.Post(u, "application/x-www-form-urlencoded", nil)
@@ -219,7 +270,10 @@ func (c *client) getOAuthCode(hostname, location string, jar http.CookieJar) (co
 	}
 
 	if resp.StatusCode != http.StatusFound {
-		return "", fmt.Errorf("got status %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		log.Debug().Msg(string(respBody))
+		return "", fmt.Errorf("got status %d while getting oauth2 code", resp.StatusCode)
 	}
 
 	var urn *url.URL
@@ -237,10 +291,10 @@ type oauthTokenResponse struct {
 	Type  string `json:"token_type"`
 }
 
-func (c *client) getOAuthToken(hostname, clientID, clientSecret, code string) (token string, err error) {
+func (c *client) getOAuthToken(instance, clientID, clientSecret, code string) (token string, err error) {
 	c.followRedirects()
 
-	u := fmt.Sprintf("https://%s/oauth/token", hostname)
+	u := fmt.Sprintf("https://%s/oauth/token", instance)
 	f := make(url.Values)
 	f.Set("grant_type", "authorization_code")
 	f.Set("redirect_uri", oauthOOB)
@@ -256,7 +310,10 @@ func (c *client) getOAuthToken(hostname, clientID, clientSecret, code string) (t
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("got status %d", resp.StatusCode)
+		respBody, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		log.Debug().Msg(string(respBody))
+		return "", fmt.Errorf("got status %d while getting oauth2 token", resp.StatusCode)
 	}
 
 	var respBody []byte

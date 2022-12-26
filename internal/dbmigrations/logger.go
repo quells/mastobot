@@ -35,7 +35,7 @@ func (l logger) Fatalf(format string, v ...interface{}) {
 }
 
 func (l logger) Print(v ...interface{}) {
-	l.handle(log.Info(), v...)
+	l.handle(log.Debug(), v...)
 }
 
 func (l logger) Println(v ...interface{}) {
@@ -43,5 +43,5 @@ func (l logger) Println(v ...interface{}) {
 }
 
 func (l logger) Printf(format string, v ...interface{}) {
-	log.Info().Msgf(format, v...)
+	log.Debug().Msgf(format, v...)
 }

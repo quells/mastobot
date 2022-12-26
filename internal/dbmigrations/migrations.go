@@ -27,7 +27,7 @@ func Apply(db *sql.DB) (err error) {
 		err = fmt.Errorf("goose ensuring db version table: %w", err)
 		return
 	}
-	log.Info().Int64("version", version).Msgf("goose current version")
+	log.Debug().Int64("version", version).Msgf("goose current version")
 
 	if err = goose.Up(db, "migrations"); err != nil {
 		err = fmt.Errorf("goose up: %w", err)

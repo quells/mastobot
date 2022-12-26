@@ -6,18 +6,18 @@ import (
 )
 
 var (
-	appName  string
-	username string
-	password string
+	appName   string
+	userEmail string
+	password  string
 )
 
 func init() {
 	appCmd.PersistentFlags().StringVar(&appName, "name", "", "Name of the application")
 	must(appCmd.MarkPersistentFlagRequired("name"))
 
-	appTokenRenewCmd.Flags().StringVarP(&username, "username", "U", "", "Account username")
+	appTokenRenewCmd.Flags().StringVarP(&userEmail, "email", "U", "", "Account email")
 	appTokenRenewCmd.Flags().StringVarP(&password, "password", "P", "", "Account password")
-	must(appTokenRenewCmd.MarkFlagRequired("username"))
+	must(appTokenRenewCmd.MarkFlagRequired("email"))
 	must(appTokenRenewCmd.MarkFlagRequired("password"))
 	appTokenCmd.AddCommand(appTokenRenewCmd)
 
@@ -54,6 +54,12 @@ Renew an access token.
 Revoke an access token.`,
 }
 
-var appTokenRenewCmd = &cobra.Command{}
+var appTokenRenewCmd = &cobra.Command{
+	Use:   "renew",
+	Short: "Renew an access token",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return oauth2.GetAccessToken(cmd.Context(), instance, appName, userEmail, password)
+	},
+}
 
 var appTokenRevokeCmd = &cobra.Command{}

@@ -31,7 +31,7 @@ func newClient(ctx context.Context) (*client, error) {
 }
 
 func (c *client) followRedirects() {
-	c.Client.CheckRedirect = nil
+	c.CheckRedirect = nil
 }
 
 func _ignoreRedirects(_ *http.Request, _ []*http.Request) error {
@@ -39,5 +39,5 @@ func _ignoreRedirects(_ *http.Request, _ []*http.Request) error {
 }
 
 func (c *client) ignoreRedirects() {
-	c.Client.CheckRedirect = _ignoreRedirects
+	c.CheckRedirect = _ignoreRedirects
 }
