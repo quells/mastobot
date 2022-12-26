@@ -2,15 +2,13 @@ package oauth2
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 
-	"github.com/doug-martin/goqu/v9"
-	"github.com/quells/mastobot/internal/dbcontext"
+	"github.com/quells/mastobot/internal/app"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,31 +24,12 @@ func RegisterApp(ctx context.Context, instance, appName string) (err error) {
 		return err
 	}
 
-	var db *sql.DB
-	db, err = dbcontext.From(ctx)
+	var alreadyExists bool
+	alreadyExists, err = app.Exists(ctx, instance, appName)
 	if err != nil {
 		return err
 	}
-
-	var query string
-	var params []any
-	query, params, err = goqu.
-		Select("instance").
-		From("apps").
-		Where(goqu.Ex{
-			"instance": instance,
-			"app_name": appName,
-		}).
-		ToSQL()
-	if err != nil {
-		return err
-	}
-	log.Debug().Msg(query)
-
-	row := db.QueryRow(query, params...)
-
-	var one string
-	if qErr := row.Scan(&one); qErr != sql.ErrNoRows {
+	if alreadyExists {
 		err = fmt.Errorf("%q is already registered with %q", appName, instance)
 		return err
 	}
@@ -61,18 +40,7 @@ func RegisterApp(ctx context.Context, instance, appName string) (err error) {
 		return err
 	}
 
-	var stmt string
-	stmt, params, err = goqu.
-		Insert("apps").
-		Cols("instance", "app_name", "app_id", "client_id", "client_secret").
-		Vals(goqu.Vals{instance, appName, resp.AppID, resp.ClientID, resp.ClientSecret}).
-		ToSQL()
-	if err != nil {
-		return err
-	}
-	log.Debug().Msg(stmt)
-
-	_, err = db.ExecContext(ctx, stmt, params...)
+	err = app.Register(ctx, instance, appName, resp.AppID, resp.ClientID, resp.ClientSecret)
 	if err != nil {
 		return err
 	}
@@ -87,29 +55,8 @@ func GetAccessToken(ctx context.Context, instance, appName, email, password stri
 		return err
 	}
 
-	var db *sql.DB
-	db, err = dbcontext.From(ctx)
-	if err != nil {
-		return err
-	}
-
-	var query string
-	var params []any
-	query, params, err = goqu.
-		Select("client_id", "client_secret").
-		From("apps").
-		Where(goqu.Ex{
-			"instance": instance,
-			"app_name": appName,
-		}).
-		ToSQL()
-	if err != nil {
-		return err
-	}
-	log.Debug().Msg(query)
-
 	var clientID, clientSecret string
-	err = db.QueryRow(query, params...).Scan(&clientID, &clientSecret)
+	clientID, clientSecret, err = app.GetClientSecrets(ctx, instance, appName)
 	if err != nil {
 		return err
 	}
@@ -140,23 +87,7 @@ func GetAccessToken(ctx context.Context, instance, appName, email, password stri
 	}
 	log.Debug().Str("token", token).Msg("access token")
 
-	var stmt string
-	stmt, params, err = goqu.
-		Update("apps").
-		Set(goqu.Record{
-			"access_token": token,
-		}).
-		Where(goqu.Ex{
-			"instance": instance,
-			"app_name": appName,
-		}).
-		ToSQL()
-	if err != nil {
-		return err
-	}
-	log.Debug().Msg(stmt)
-
-	_, err = db.ExecContext(ctx, stmt, params...)
+	err = app.UpdateAccessToken(ctx, instance, appName, token)
 	if err != nil {
 		return err
 	}

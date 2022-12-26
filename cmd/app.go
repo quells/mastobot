@@ -25,6 +25,7 @@ func init() {
 
 	appCmd.AddCommand(appRegisterCmd)
 	appCmd.AddCommand(appTokenCmd)
+	appCmd.AddCommand(appTootCmd)
 
 	rootCmd.AddCommand(appCmd)
 }
@@ -63,3 +64,8 @@ var appTokenRenewCmd = &cobra.Command{
 }
 
 var appTokenRevokeCmd = &cobra.Command{}
+
+var appTootCmd = &cobra.Command{
+	Use:   "toot",
+	Short: "Toot!",
+}
