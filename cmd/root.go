@@ -9,6 +9,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/quells/mastobot/internal/dbmigrations"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -78,6 +79,7 @@ var rootCmd = &cobra.Command{
 			}
 		})
 		must(db.Ping())
+		must(dbmigrations.Apply(db))
 	},
 }
 
