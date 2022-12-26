@@ -3,6 +3,7 @@ module github.com/quells/mastobot
 go 1.19
 
 require (
+	github.com/doug-martin/goqu/v9 v9.18.0
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/pressly/goose/v3 v3.7.0
 	github.com/rs/zerolog v1.28.0
@@ -12,7 +13,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/doug-martin/goqu/v9 v9.18.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect

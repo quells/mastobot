@@ -131,3 +131,33 @@ func UpdateAccessToken(ctx context.Context, instance, appName, token string) (er
 
 	return
 }
+
+func GetAccessToken(ctx context.Context, instance, appName string) (token string, err error) {
+	var query string
+	var params []any
+	query, params, err = goqu.
+		Select("access_token").
+		From("apps").
+		Where(goqu.Ex{
+			"instance": instance,
+			"app_name": appName,
+		}).
+		ToSQL()
+	if err != nil {
+		return
+	}
+	log.Debug().Msg(query)
+
+	var db *sql.DB
+	db, err = dbcontext.From(ctx)
+	if err != nil {
+		return
+	}
+
+	err = db.QueryRow(query, params...).Scan(&token)
+	if err != nil {
+		return
+	}
+
+	return
+}

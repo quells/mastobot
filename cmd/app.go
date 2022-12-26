@@ -1,14 +1,22 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/quells/mastobot/internal/oauth2"
+	"github.com/quells/mastobot/internal/toot"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var (
 	appName   string
 	userEmail string
 	password  string
+
+	visibilityS string
+	visibility  toot.Visibility
+	sensitive   bool
+	spoilerText string
 )
 
 func init() {
@@ -25,6 +33,10 @@ func init() {
 
 	appCmd.AddCommand(appRegisterCmd)
 	appCmd.AddCommand(appTokenCmd)
+
+	appTootCmd.Flags().StringVar(&visibilityS, "visibility", "private", "[private, unlisted, public, direct]")
+	appTootCmd.Flags().BoolVar(&sensitive, "sensitive", false, "Mark Toot as containing sensitive material")
+	appTootCmd.Flags().StringVar(&spoilerText, "spoiler", "", "Spoiler text")
 	appCmd.AddCommand(appTootCmd)
 
 	rootCmd.AddCommand(appCmd)
@@ -68,4 +80,28 @@ var appTokenRevokeCmd = &cobra.Command{}
 var appTootCmd = &cobra.Command{
 	Use:   "toot",
 	Short: "Toot!",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return fmt.Errorf("must provide toot message")
+		}
+		visibility = toot.VisibilityFrom(visibilityS)
+		if visibility == toot.VisibilityInvalid {
+			return fmt.Errorf("invalid visibility value")
+		}
+		return nil
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		status := toot.Status{
+			Text:       args[0],
+			Visibility: visibility,
+			Sensitive:  sensitive,
+			Spoiler:    spoilerText,
+		}
+		id, err := status.Submit(cmd.Context(), instance, appName)
+		if err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintln(os.Stdout, id)
+		return nil
+	},
 }
