@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/quells/mastobot/internal/dbcontext"
 	"os"
 	"sync"
 	"time"
@@ -57,10 +58,6 @@ var rootCmd = &cobra.Command{
 	Use:   "mastobot",
 	Short: "Mastodon Bots",
 	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
-		ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
-		registerShutdown(cancel)
-		cmd.SetContext(ctx)
-
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
 		if v {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -80,6 +77,11 @@ var rootCmd = &cobra.Command{
 		})
 		must(db.Ping())
 		must(dbmigrations.Apply(db))
+
+		ctx, cancel := context.WithTimeout(cmd.Context(), timeout)
+		registerShutdown(cancel)
+		ctx = dbcontext.Set(ctx, db)
+		cmd.SetContext(ctx)
 	},
 }
 

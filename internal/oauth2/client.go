@@ -1,23 +1,31 @@
 package oauth2
 
 import (
+	"context"
 	"net/http"
 	"net/http/cookiejar"
+	"time"
 )
 
 type client struct {
 	http.Client
 }
 
-func newClient() (*client, error) {
+func newClient(ctx context.Context) (*client, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, err
 	}
 
+	var timeout time.Duration
+	if deadline, ok := ctx.Deadline(); ok {
+		timeout = time.Until(deadline)
+	}
+
 	return &client{
 		Client: http.Client{
-			Jar: jar,
+			Jar:     jar,
+			Timeout: timeout,
 		},
 	}, nil
 }
@@ -26,10 +34,10 @@ func (c *client) followRedirects() {
 	c.Client.CheckRedirect = nil
 }
 
-func ignoreRedirects(_ *http.Request, _ []*http.Request) error {
+func _ignoreRedirects(_ *http.Request, _ []*http.Request) error {
 	return http.ErrUseLastResponse
 }
 
 func (c *client) ignoreRedirects() {
-	c.Client.CheckRedirect = ignoreRedirects
+	c.Client.CheckRedirect = _ignoreRedirects
 }

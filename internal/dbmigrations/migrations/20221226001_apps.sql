@@ -7,7 +7,7 @@ CREATE TABLE apps (
     client_secret  TEXT NOT NULL,
     access_token   TEXT,
 
-    UNIQUE (instance, app_id)
+    UNIQUE (instance, app_name)
 );
 
 -- +goose Down
