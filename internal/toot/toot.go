@@ -1,6 +1,7 @@
 package toot
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type Visibility int
@@ -51,13 +53,44 @@ func VisibilityFrom(s string) Visibility {
 	}
 }
 
+func (v *Visibility) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(data, []byte("null")) {
+		return nil
+	}
+	switch len(data) {
+	case 8:
+		if bytes.Equal(data, []byte(`"public"`)) {
+			*v = VisibilityPublic
+			return nil
+		}
+		if bytes.Equal(data, []byte(`"direct"`)) {
+			*v = VisibilityDirect
+			return nil
+		}
+	case 9:
+		if bytes.Equal(data, []byte(`"private"`)) {
+			*v = VisibilityPrivate
+			return nil
+		}
+	case 10:
+		if bytes.Equal(data, []byte(`"unlisted"`)) {
+			*v = VisibilityUnlisted
+			return nil
+		}
+	}
+	return fmt.Errorf("data is not a valid Visibility value")
+}
+
 type Status struct {
-	Text       string
-	MediaIDs   []string
-	ReplyToID  string
-	Sensitive  bool
-	Spoiler    string
-	Visibility Visibility
+	ID         string     `json:"id"`
+	Text       string     `json:"text"`
+	MediaIDs   []string   `json:"media_ids"`
+	ReplyToID  string     `json:"in_reply_to_id"`
+	Sensitive  bool       `json:"sensitive"`
+	Spoiler    string     `json:"spoiler_text"`
+	Visibility Visibility `json:"visibility"`
+
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (s Status) FormData() url.Values {
@@ -65,18 +98,10 @@ func (s Status) FormData() url.Values {
 		"status":     []string{s.Text},
 		"visibility": []string{s.Visibility.String()},
 	}
-	for _, mediaID := range s.MediaIDs {
-		f.Add("media_ids", mediaID)
-	}
-	if s.ReplyToID != "" {
-		f.Set("in_reply_to_id", s.ReplyToID)
-	}
-	if s.Sensitive {
-		f.Set("sensitive", "true")
-	}
-	if s.Spoiler != "" {
-		f.Set("spoiler_text", s.Spoiler)
-	}
+	SetNonZero(&f, "media_ids", s.MediaIDs)
+	SetNonZero(&f, "in_reply_to_id", s.ReplyToID)
+	SetNonZero(&f, "sensitive", s.Sensitive)
+	SetNonZero(&f, "spoiler_text", s.Spoiler)
 	return f
 }
 
@@ -85,7 +110,7 @@ type statusResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
-func (s Status) Submit(ctx context.Context, instance, appName string) (id string, err error) {
+func (s Status) Submit(ctx context.Context, instance, appName string) (tootID string, err error) {
 	var accessToken string
 	accessToken, err = app.GetAccessToken(ctx, instance, appName)
 	if err != nil {
@@ -128,6 +153,6 @@ func (s Status) Submit(ctx context.Context, instance, appName string) (id string
 		return
 	}
 
-	id = response.ID
+	tootID = response.ID
 	return
 }
