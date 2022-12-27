@@ -13,10 +13,10 @@ var (
 	userEmail string
 	password  string
 
-	visibilityS string
-	visibility  toot.Visibility
-	sensitive   bool
-	spoilerText string
+	tootVisibilityS string
+	tootVisibility  toot.Visibility
+	tootSensitive   bool
+	tootSpoilerText string
 )
 
 func init() {
@@ -34,9 +34,9 @@ func init() {
 	appCmd.AddCommand(appRegisterCmd)
 	appCmd.AddCommand(appTokenCmd)
 
-	appTootCmd.Flags().StringVar(&visibilityS, "visibility", "private", "[private, unlisted, public, direct]")
-	appTootCmd.Flags().BoolVar(&sensitive, "sensitive", false, "Mark Toot as containing sensitive material")
-	appTootCmd.Flags().StringVar(&spoilerText, "spoiler", "", "Spoiler text")
+	appTootCmd.Flags().StringVar(&tootVisibilityS, "visibility", "private", "[private, unlisted, public, direct]")
+	appTootCmd.Flags().BoolVar(&tootSensitive, "sensitive", false, "Mark Toot as containing sensitive material")
+	appTootCmd.Flags().StringVar(&tootSpoilerText, "spoiler", "", "Spoiler text")
 	appCmd.AddCommand(appTootCmd)
 
 	rootCmd.AddCommand(appCmd)
@@ -84,8 +84,8 @@ var appTootCmd = &cobra.Command{
 		if len(args) != 1 {
 			return fmt.Errorf("must provide toot message")
 		}
-		visibility = toot.VisibilityFrom(visibilityS)
-		if visibility == toot.VisibilityInvalid {
+		tootVisibility = toot.VisibilityFrom(tootVisibilityS)
+		if tootVisibility == toot.VisibilityInvalid {
 			return fmt.Errorf("invalid visibility value")
 		}
 		return nil
@@ -93,9 +93,9 @@ var appTootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		status := toot.Status{
 			Text:       args[0],
-			Visibility: visibility,
-			Sensitive:  sensitive,
-			Spoiler:    spoilerText,
+			Visibility: tootVisibility,
+			Sensitive:  tootSensitive,
+			Spoiler:    tootSpoilerText,
 		}
 		id, err := status.Submit(cmd.Context(), instance, appName)
 		if err != nil {
