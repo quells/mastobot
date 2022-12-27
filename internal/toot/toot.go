@@ -16,11 +16,11 @@ import (
 type Visibility int
 
 const (
-	VisibilityInvalid Visibility = iota
-	VisibilityPrivate
-	VisibilityUnlisted
-	VisibilityPublic
-	VisibilityDirect
+	VisibilityInvalid  Visibility = iota
+	VisibilityPrivate             // Visible only to followers and mentioned users, not on public timelines
+	VisibilityUnlisted            // Visible to everyone, but does not appear on public timelines
+	VisibilityPublic              // Visible to everyone and appears on public timelines
+	VisibilityDirect              // Visible only to mentioned users
 )
 
 func (v Visibility) String() string {

@@ -52,7 +52,7 @@ var nodemetricsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		const appName = "nodemetrics"
 
-		accountID, err := toot.VerifyCredentials(cmd.Context(), instance, appName)
+		_, err := toot.VerifyCredentials(cmd.Context(), instance, appName)
 		if err != nil {
 			return err
 		}
@@ -72,23 +72,6 @@ var nodemetricsCmd = &cobra.Command{
 			return err
 		}
 		_, _ = fmt.Fprintln(os.Stdout, id)
-
-		_ = accountID
-		//list := toot.ListStatuses{
-		//	MaxID: id,
-		//	Limit: 40,
-		//}
-		//for {
-		//	statuses, err := list.ForAccount(cmd.Context(), instance, appName, accountID)
-		//	if err != nil {
-		//		return err
-		//	}
-		//	if len(statuses) == 0 {
-		//		break
-		//	}
-		//
-		//	// TODO: delete toots older than `maxAge`
-		//}
 
 		return nil
 	},

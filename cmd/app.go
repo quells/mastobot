@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"github.com/quells/mastobot/internal/oauth2"
 	"github.com/quells/mastobot/internal/toot"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"os"
+	"time"
 )
 
 var (
@@ -17,6 +19,8 @@ var (
 	tootVisibility  toot.Visibility
 	tootSensitive   bool
 	tootSpoilerText string
+
+	maxAge time.Duration
 )
 
 func init() {
@@ -38,6 +42,9 @@ func init() {
 	appTootCmd.Flags().BoolVar(&tootSensitive, "sensitive", false, "Mark Toot as containing sensitive material")
 	appTootCmd.Flags().StringVar(&tootSpoilerText, "spoiler", "", "Spoiler text")
 	appCmd.AddCommand(appTootCmd)
+
+	appExpireCmd.Flags().DurationVar(&maxAge, "max-age", 30*24*time.Hour, "Maximum age")
+	appCmd.AddCommand(appExpireCmd)
 
 	rootCmd.AddCommand(appCmd)
 }
@@ -75,7 +82,7 @@ var appTokenRenewCmd = &cobra.Command{
 	},
 }
 
-var appTokenRevokeCmd = &cobra.Command{}
+var appTokenRevokeCmd = &cobra.Command{} // TODO
 
 var appTootCmd = &cobra.Command{
 	Use:   "toot",
@@ -91,6 +98,11 @@ var appTootCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		_, err := toot.VerifyCredentials(cmd.Context(), instance, appName)
+		if err != nil {
+			return err
+		}
+
 		status := toot.Status{
 			Text:       args[0],
 			Visibility: tootVisibility,
@@ -102,6 +114,43 @@ var appTootCmd = &cobra.Command{
 			return err
 		}
 		_, _ = fmt.Fprintln(os.Stdout, id)
+		return nil
+	},
+}
+
+var appExpireCmd = &cobra.Command{
+	Use:   "expire",
+	Short: "Delete old toots",
+	Long:  "Delete all toots older than a certain age.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		accountID, err := toot.VerifyCredentials(cmd.Context(), instance, appName)
+		if err != nil {
+			return err
+		}
+
+		list := toot.ListStatuses{
+			Limit: 40,
+		}
+		for {
+			statuses, err := list.ForAccount(cmd.Context(), instance, appName, accountID)
+			if err != nil {
+				return err
+			}
+			if len(statuses) == 0 {
+				break
+			}
+
+			for _, status := range statuses {
+				if time.Since(status.CreatedAt) < maxAge {
+					continue
+				}
+
+				log.Info().Time("created_at", status.CreatedAt).Msg("will expire")
+				// TODO: delete toot
+			}
+
+			list.MaxID = statuses[len(statuses)-1].ID
+		}
 		return nil
 	},
 }
