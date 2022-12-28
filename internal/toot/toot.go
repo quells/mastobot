@@ -98,7 +98,7 @@ func (s Status) FormData() url.Values {
 		"status":     []string{s.Text},
 		"visibility": []string{s.Visibility.String()},
 	}
-	SetNonZero(&f, "media_ids", s.MediaIDs)
+	SetNonZero(&f, "media_ids[]", s.MediaIDs)
 	SetNonZero(&f, "in_reply_to_id", s.ReplyToID)
 	SetNonZero(&f, "sensitive", s.Sensitive)
 	SetNonZero(&f, "spoiler_text", s.Spoiler)

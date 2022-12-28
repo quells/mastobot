@@ -1,11 +1,11 @@
-package main
+package goes
 
 import (
+	"bytes"
+	"context"
 	"github.com/nfnt/resize"
 	"image/jpeg"
-	"log"
-	"os"
-	"time"
+	"net/http"
 )
 
 /*
@@ -19,29 +19,47 @@ https://www.star.nesdis.noaa.gov/goes/index.php
 NOAA/NESDIS/STAR - GOES-West - GeoColor Composite by CIRA/NOAA
 */
 
-func main() {
-	file, err := os.Open("goes-west.jpg")
+const (
+	goes17 = "https://cdn.star.nesdis.noaa.gov/GOES17/ABI/FD/GEOCOLOR/5424x5424.jpg"
+)
+
+func GOES17(ctx context.Context) (large, thumbnail []byte, err error) {
+	var req *http.Request
+	req, err = http.NewRequest(http.MethodGet, goes17, nil)
 	if err != nil {
-		log.Fatal(err)
+		return
+	}
+	req = req.WithContext(ctx)
+
+	var resp *http.Response
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		return
 	}
 
-	img, err := jpeg.Decode(file)
+	img, err := jpeg.Decode(resp.Body)
+	_ = resp.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
-	_ = file.Close()
 
-	start := time.Now()
-	m := resize.Resize(256, 0, img, resize.Lanczos3)
-	elapsed := time.Since(start)
-	log.Println(elapsed)
-	_ = m
-
-	out, err := os.Create("goes-west-256.jpg")
-	if err != nil {
-		log.Fatal(err)
+	buf := new(bytes.Buffer)
+	{
+		m := resize.Resize(1280, 0, img, resize.Lanczos3)
+		err = jpeg.Encode(buf, m, nil)
+		if err != nil {
+			return
+		}
+		large = buf.Bytes()
 	}
-	defer out.Close()
+	{
+		m := resize.Resize(256, 0, img, resize.Lanczos3)
+		err = jpeg.Encode(buf, m, nil)
+		if err != nil {
+			return
+		}
+		thumbnail = buf.Bytes()
+	}
 
-	_ = jpeg.Encode(out, m, nil)
+	return
 }
