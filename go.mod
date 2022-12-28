@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/doug-martin/goqu/v9 v9.18.0
 	github.com/mattn/go-sqlite3 v1.14.16
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/pressly/goose/v3 v3.7.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/common v0.39.0
