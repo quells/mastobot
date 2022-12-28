@@ -156,3 +156,31 @@ func (s Status) Submit(ctx context.Context, instance, appName string) (tootID st
 	tootID = response.ID
 	return
 }
+
+func Delete(ctx context.Context, instance, appName, statusID string) (err error) {
+	var accessToken string
+	accessToken, err = app.GetAccessToken(ctx, instance, appName)
+	if err != nil {
+		return
+	}
+
+	u := fmt.Sprintf("https://%s/api/v1/statuses/%s", instance, statusID)
+
+	var req *http.Request
+	req, err = http.NewRequest(http.MethodDelete, u, nil)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+
+	var resp *http.Response
+	resp, err = http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("got status %d", resp.StatusCode)
+	}
+	return nil
+}

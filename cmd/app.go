@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/quells/mastobot/internal/oauth2"
 	"github.com/quells/mastobot/internal/toot"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"os"
 	"time"
@@ -145,8 +144,11 @@ var appExpireCmd = &cobra.Command{
 					continue
 				}
 
-				log.Info().Time("created_at", status.CreatedAt).Msg("will expire")
-				// TODO: delete toot
+				err = toot.Delete(cmd.Context(), instance, appName, status.ID)
+				if err != nil {
+					return err
+				}
+				_, _ = fmt.Fprintln(os.Stdout, status.ID)
 			}
 
 			list.MaxID = statuses[len(statuses)-1].ID
