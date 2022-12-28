@@ -144,6 +144,8 @@ var appExpireCmd = &cobra.Command{
 					continue
 				}
 
+				// TODO: check mentions; add option to prevent deletion if mentioned
+
 				err = toot.Delete(cmd.Context(), instance, appName, status.ID)
 				if err != nil {
 					return err
