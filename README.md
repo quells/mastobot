@@ -14,6 +14,6 @@ $ CC=x86_64-linux-musl-gcc \
   GOOS=linux \
   CGO_ENABLED=1 \
   go build \
-  -ldflags "-linkmode external -extldflags -static" \
+  -ldflags "-s -w -linkmode external -extldflags -static" \
   -o mastobot .
 ```
