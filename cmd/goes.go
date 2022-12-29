@@ -22,7 +22,7 @@ var goesWestCmd = &cobra.Command{
 	Use:   "west",
 	Short: "Toot satellite image of Earth's western hemisphere from GOES-17",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		const appName = "nodemetrics" // FIXME
+		const appName = "GOES-17"
 
 		_, err := toot.VerifyCredentials(cmd.Context(), instance, appName)
 		if err != nil {
@@ -51,7 +51,7 @@ var goesWestCmd = &cobra.Command{
 
 		status := toot.Status{
 			MediaIDs:   []string{mediaID},
-			Visibility: toot.VisibilityPrivate, // FIXME
+			Visibility: toot.VisibilityPublic,
 		}
 		var statusID string
 		statusID, err = status.Submit(cmd.Context(), instance, appName)
