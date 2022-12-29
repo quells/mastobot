@@ -15,6 +15,9 @@ var (
 )
 
 func init() {
+	nodemetricsCmd.PersistentFlags().StringVar(&instance, "instance", "", "Mastodon (or compatible) instance to interact with")
+	must(nodemetricsCmd.MarkPersistentFlagRequired("instance"))
+
 	nodemetricsCmd.Flags().StringVar(&metricsURL, "metrics-url", "", "URL of the node_exporter metrics")
 	must(nodemetricsCmd.MarkFlagRequired("metrics-url"))
 	rootCmd.AddCommand(nodemetricsCmd)

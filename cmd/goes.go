@@ -9,6 +9,9 @@ import (
 )
 
 func init() {
+	goesCmd.PersistentFlags().StringVar(&instance, "instance", "", "Mastodon (or compatible) instance to interact with")
+	must(goesCmd.MarkPersistentFlagRequired("instance"))
+
 	goesCmd.AddCommand(goesWestCmd)
 	rootCmd.AddCommand(goesCmd)
 }

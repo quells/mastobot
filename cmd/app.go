@@ -23,6 +23,9 @@ var (
 )
 
 func init() {
+	appCmd.PersistentFlags().StringVar(&instance, "instance", "", "Mastodon (or compatible) instance to interact with")
+	must(appCmd.MarkPersistentFlagRequired("instance"))
+
 	appCmd.PersistentFlags().StringVar(&appName, "name", "", "Name of the application")
 	must(appCmd.MarkPersistentFlagRequired("name"))
 

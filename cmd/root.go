@@ -87,8 +87,6 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&connStr, "db", "file:mastobot.db?_busy_timeout=5000&_journal_mode=WAL", "sqlite database connection string")
-	rootCmd.PersistentFlags().StringVar(&instance, "instance", "", "Mastodon (or compatible) instance to interact with")
-	must(rootCmd.MarkPersistentFlagRequired("instance"))
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 10*time.Second, "Request timeout")
 
 	rootCmd.PersistentFlags().BoolVarP(&v, "log_info", "v", false, "Log info level")
