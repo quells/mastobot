@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/quells/mastobot/internal/dbcontext"
 	"os"
 	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/quells/mastobot/internal/dbcontext"
 	"github.com/quells/mastobot/internal/dbmigrations"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

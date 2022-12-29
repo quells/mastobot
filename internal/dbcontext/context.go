@@ -3,6 +3,7 @@ package dbcontext
 import (
 	"context"
 	"database/sql"
+
 	"github.com/quells/mastobot/internal/di"
 )
 

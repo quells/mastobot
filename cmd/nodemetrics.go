@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/quells/mastobot/internal/nodeexporter"
-	"github.com/quells/mastobot/internal/toot"
-	"github.com/spf13/cobra"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/quells/mastobot/internal/nodeexporter"
+	"github.com/quells/mastobot/internal/toot"
+	"github.com/spf13/cobra"
 )
 
 var (

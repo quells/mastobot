@@ -2,7 +2,6 @@ package nodeexporter
 
 import (
 	"context"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net/http"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/rs/zerolog/log"
 )
 
 type Metrics struct {

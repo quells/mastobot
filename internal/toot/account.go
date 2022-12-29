@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/quells/mastobot/internal/app"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/quells/mastobot/internal/app"
 )
 
 type verifyCredentialsResponse struct {

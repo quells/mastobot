@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/quells/mastobot/internal/oauth2"
 	"github.com/quells/mastobot/internal/toot"
 	"github.com/spf13/cobra"
-	"os"
-	"time"
 )
 
 var (

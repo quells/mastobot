@@ -3,9 +3,10 @@ package goes
 import (
 	"bytes"
 	"context"
-	"github.com/nfnt/resize"
 	"image/jpeg"
 	"net/http"
+
+	"github.com/nfnt/resize"
 )
 
 /*

@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/quells/mastobot/internal/app"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+
+	"github.com/quells/mastobot/internal/app"
 )
 
 type ContentTypeMedia string

@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/quells/mastobot/internal/goes"
 	"github.com/quells/mastobot/internal/toot"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 func init() {
