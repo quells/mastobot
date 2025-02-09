@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/quells/mastobot/internal/nodeexporter"
 	"github.com/quells/mastobot/internal/toot"
@@ -24,9 +23,9 @@ func init() {
 	rootCmd.AddCommand(nodemetricsCmd)
 }
 
-func nodemetricsToot(m nodeexporter.Metrics) string {
-	siBytes := func(f float64) string {
-		units := []string{"B", "KB", "MB", "GB", "TB", "PB"}
+func nodemetricsToot(m *nodeexporter.NodeMetrics) string {
+	siBytes := func(f uint64) string {
+		units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB"}
 		si := 0
 		for {
 			if f < 1024 {
@@ -35,17 +34,20 @@ func nodemetricsToot(m nodeexporter.Metrics) string {
 			si++
 			f /= 1024
 		}
-		return fmt.Sprintf("%.2f %s", f, units[si])
+		return fmt.Sprintf("%d %s", f, units[si])
 	}
 
 	b := new(strings.Builder)
-	_, _ = fmt.Fprint(b, m.Name, "\n")
+	_, _ = fmt.Fprint(b, m.Hostname, "\n")
+	if m.Kernel != "" {
+		_, _ = fmt.Fprint(b, "Kernel: ", m.Kernel, "\n")
+	}
 	_, _ = fmt.Fprintf(b, "Load: %.2f %.2f %.2f\n", m.Load1, m.Load5, m.Load15)
-	_, _ = fmt.Fprintf(b, "RAM: %s of %s free\n", siBytes(m.MemFree), siBytes(m.MemTotal))
-	_, _ = fmt.Fprintf(b, "SWAP: %s of %s free\n", siBytes(m.SwapFree), siBytes(m.SwapTotal))
-	_, _ = fmt.Fprintf(b, "Root FS: %s of %s available\n", siBytes(m.RootFSAvail), siBytes(m.RootFSSize))
-	_, _ = fmt.Fprintf(b, "Network I/O: %sps | %sps\n", siBytes(m.NetworkIn), siBytes(m.NetworkOut))
-	_, _ = fmt.Fprintf(b, "Uptime: %s", m.Uptime)
+	_, _ = fmt.Fprintf(b, "RAM: %s of %s free\n", siBytes(m.MemoryFreeBytes), siBytes(m.MemoryTotalBytes))
+	_, _ = fmt.Fprintf(b, "SWAP: %s of %s free\n", siBytes(m.MemorySwapFreeBytes), siBytes(m.MemorySwapTotalBytes))
+	_, _ = fmt.Fprintf(b, "Root FS: %s of %s available\n", siBytes(m.FilesystemAvailBytes), siBytes(m.FilesystemSizeBytes))
+	//_, _ = fmt.Fprintf(b, "Network I/O: %sps | %sps\n", siBytes(m.NetworkIn), siBytes(m.NetworkOut))
+	_, _ = fmt.Fprintf(b, "Uptime: %s", m.Uptime())
 	return b.String()
 }
 
@@ -56,13 +58,7 @@ var nodemetricsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		const appName = "nodemetrics"
 
-		_, err := toot.VerifyCredentials(cmd.Context(), instance, appName)
-		if err != nil {
-			return err
-		}
-
-		interval := 5 * time.Second
-		metrics, err := nodeexporter.GetMetrics(cmd.Context(), metricsURL, interval)
+		metrics, err := nodeexporter.GetNodeMetrics(cmd.Context(), metricsURL)
 		if err != nil {
 			return err
 		}
@@ -70,6 +66,17 @@ var nodemetricsCmd = &cobra.Command{
 			Text:       nodemetricsToot(metrics),
 			Visibility: toot.VisibilityPrivate,
 		}
+
+		if dryRun {
+			fmt.Println(status.Text)
+			return nil
+		}
+
+		_, err = toot.VerifyCredentials(cmd.Context(), instance, appName)
+		if err != nil {
+			return err
+		}
+
 		var id string
 		id, err = status.Submit(cmd.Context(), instance, "nodemetrics")
 		if err != nil {

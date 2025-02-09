@@ -2,6 +2,7 @@ package nodeexporter
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -9,148 +10,169 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-	"github.com/rs/zerolog/log"
 )
 
-type Metrics struct {
-	Name                    string
-	Load1, Load5, Load15    float64
-	RootFSAvail, RootFSSize float64
-	MemFree, MemTotal       float64
-	SwapFree, SwapTotal     float64
-	Uptime                  time.Duration
-	NetworkIn, NetworkOut   float64
-}
-
-func GetMetrics(ctx context.Context, u string, interval time.Duration) (metrics Metrics, err error) {
-	var a, b map[string]any
-	a, err = getMetrics(ctx, u)
+func GetNodeMetrics(ctx context.Context, u string) (*NodeMetrics, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	t := time.NewTimer(interval)
-	select {
-	case <-ctx.Done():
-		if !t.Stop() {
-			<-t.C
-		}
-		err = ctx.Err()
-		return
-
-	case <-t.C:
-		break
-	}
-
-	b, err = getMetrics(ctx, u)
-	if err != nil {
-		return
-	}
-
-	metrics.Name = b["node_uname_info"].(string)
-
-	metrics.Load1 = (a["load1"].(float64) + b["load1"].(float64)) / 2
-	metrics.Load5 = (a["load5"].(float64) + b["load5"].(float64)) / 2
-	metrics.Load15 = (a["load15"].(float64) + b["load15"].(float64)) / 2
-
-	metrics.RootFSAvail = (a["node_filesystem_avail_bytes"].(float64) + b["node_filesystem_avail_bytes"].(float64)) / 2
-	metrics.RootFSSize = (a["node_filesystem_size_bytes"].(float64) + b["node_filesystem_size_bytes"].(float64)) / 2
-
-	metrics.MemFree = (a["node_memory_MemFree_bytes"].(float64) + b["node_memory_MemFree_bytes"].(float64)) / 2
-	metrics.MemTotal = (a["node_memory_MemTotal_bytes"].(float64) + b["node_memory_MemTotal_bytes"].(float64)) / 2
-	metrics.SwapFree = (a["node_memory_SwapFree_bytes"].(float64) + b["node_memory_SwapFree_bytes"].(float64)) / 2
-	metrics.SwapTotal = (a["node_memory_SwapTotal_bytes"].(float64) + b["node_memory_SwapTotal_bytes"].(float64)) / 2
-
-	uptime := b["node_time_seconds"].(float64) - b["node_boot_time_seconds"].(float64)
-	metrics.Uptime = time.Duration(uptime) * time.Second
-
-	metrics.NetworkIn = (b["node_network_receive_bytes_total"].(float64) - a["node_network_receive_bytes_total"].(float64)) / interval.Seconds()
-	metrics.NetworkOut = (b["node_network_transmit_bytes_total"].(float64) - a["node_network_transmit_bytes_total"].(float64)) / interval.Seconds()
-
-	return
-}
-
-func getMetrics(ctx context.Context, u string) (metrics map[string]any, err error) {
-	format := expfmt.FmtProtoDelim
-	var req *http.Request
-	req, err = http.NewRequest(http.MethodGet, u, nil)
-	if err != nil {
-		return
-	}
-	req.Header.Set("Accept", string(format))
-	req = req.WithContext(ctx)
+	fmt := expfmt.NewFormat(expfmt.TypeTextPlain)
+	req.Header.Set("Accept", string(fmt))
 
 	var resp *http.Response
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
-		return
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var parsed *NodeMetrics
+	parsed, err = ParseNodeMetrics(resp.Body, fmt)
+	if err != nil {
+		return nil, err
 	}
 
-	metrics = make(map[string]any)
-	for _, name := range []string{
-		"load1",
-		"load5",
-		"load15",
-		"node_filesystem_avail_bytes",
-		"node_filesystem_size_bytes",
-		"node_memory_MemFree_bytes",
-		"node_memory_MemTotal_bytes",
-		"node_memory_SwapFree_bytes",
-		"node_memory_SwapTotal_bytes",
-		"node_boot_time_seconds",
-		"node_time_seconds",
-		"node_network_receive_bytes_total",
-		"node_network_transmit_bytes_total",
-		"node_uname_info",
-	} {
-		metrics[name] = float64(0)
-	}
+	return parsed, nil
+}
 
+type NodeMetrics struct {
+	Load1                float64
+	Load5                float64
+	Load15               float64
+	FilesystemAvailBytes uint64
+	FilesystemSizeBytes  uint64
+	MemoryFreeBytes      uint64
+	MemoryTotalBytes     uint64
+	MemorySwapFreeBytes  uint64
+	MemorySwapTotalBytes uint64
+	BootTimeSeconds      uint64
+	TimeSeconds          uint64
+	NetworkReceiveBytes  uint64
+	NetworkTransmitBytes uint64
+	Hostname             string
+	Kernel               string
+}
+
+func (m *NodeMetrics) Uptime() string {
+	if m == nil {
+		return "unknown"
+	}
+	uptime := time.Duration(m.TimeSeconds-m.BootTimeSeconds) * time.Second
+	if uptime < 48*time.Hour {
+		return uptime.String()
+	}
+	upDays := float64(uptime / (24 * time.Hour))
+	return fmt.Sprintf("%.1fd", upDays)
+}
+
+func ParseNodeMetrics(r io.Reader, fmt expfmt.Format) (nodemetrics *NodeMetrics, err error) {
+	dec := expfmt.NewDecoder(r, fmt)
+	nodemetrics = &NodeMetrics{}
 	for {
 		var family dto.MetricFamily
-		err = expfmt.NewDecoder(resp.Body, format).Decode(&family)
+		err = dec.Decode(&family)
 		if err != nil {
 			if err == io.EOF {
 				err = nil
+				break
 			}
-			log.Debug().Msgf("%+v", metrics)
-			return
-		}
-		name := *family.Name
-		if _, ok := metrics[name]; !ok {
-			continue
+			return nil, err
 		}
 
-		for _, m := range family.Metric {
-			labels := make(map[string]string)
-			for _, label := range m.GetLabel() {
-				labels[label.GetName()] = label.GetValue()
-			}
-			if strings.Contains(name, "network") {
-				device := labels["device"]
-				if strings.HasPrefix(device, "br-") ||
-					strings.HasPrefix(device, "docker") ||
-					strings.HasPrefix(device, "lo") ||
-					strings.HasPrefix(device, "veth") {
-					continue
+		switch family.GetName() {
+		case "node_load1":
+			nodemetrics.Load1 = getGauge(&family)
+		case "node_load5":
+			nodemetrics.Load5 = getGauge(&family)
+		case "node_load15":
+			nodemetrics.Load15 = getGauge(&family)
+		case "node_filesystem_avail_bytes":
+			nodemetrics.FilesystemAvailBytes = getFilesystem(&family, "/")
+		case "node_filesystem_size_bytes":
+			nodemetrics.FilesystemSizeBytes = getFilesystem(&family, "/")
+		case "node_memory_MemFree_bytes":
+			nodemetrics.MemoryFreeBytes = getGaugeUint64(&family)
+		case "node_memory_MemTotal_bytes":
+			nodemetrics.MemoryTotalBytes = getGaugeUint64(&family)
+		case "node_memory_SwapFree_bytes":
+			nodemetrics.MemorySwapFreeBytes = getGaugeUint64(&family)
+		case "node_memory_SwapTotal_bytes":
+			nodemetrics.MemorySwapTotalBytes = getGaugeUint64(&family)
+		case "node_boot_time_seconds":
+			nodemetrics.BootTimeSeconds = getGaugeUint64(&family)
+		case "node_time_seconds":
+			nodemetrics.TimeSeconds = getGaugeUint64(&family)
+		case "node_network_receive_bytes_total":
+			nodemetrics.NetworkReceiveBytes = getNetwork(&family)
+		case "node_network_transmit_bytes_total":
+			nodemetrics.NetworkTransmitBytes = getNetwork(&family)
+		case "node_uname_info":
+			for _, m := range family.GetMetric() {
+				for _, lp := range m.GetLabel() {
+					switch lp.GetName() {
+					case "nodename":
+						nodemetrics.Hostname = lp.GetValue()
+					case "release":
+						nodemetrics.Kernel = lp.GetValue()
+					}
 				}
-			} else if strings.Contains(name, "filesystem") {
-				mountpoint := labels["mountpoint"]
-				if mountpoint != "/" {
-					continue
-				}
-			}
-
-			if name == "node_uname_info" {
-				metrics[name] = labels["nodename"]
-				continue
-			}
-
-			if g := m.GetGauge(); g != nil {
-				metrics[name] = g.GetValue()
-			} else if c := m.GetCounter(); c != nil {
-				metrics[name] = c.GetValue()
 			}
 		}
 	}
+	return nodemetrics, nil
+}
+
+func getGauge(family *dto.MetricFamily) float64 {
+	for _, m := range family.GetMetric() {
+		g := m.GetGauge()
+		return g.GetValue()
+	}
+	return 0
+}
+
+func getGaugeUint64(family *dto.MetricFamily) uint64 {
+	for _, m := range family.GetMetric() {
+		g := m.GetGauge()
+		return uint64(g.GetValue())
+	}
+	return 0
+}
+
+func getFilesystem(family *dto.MetricFamily, mountpoint string) uint64 {
+search:
+	for _, m := range family.GetMetric() {
+		for _, lp := range m.GetLabel() {
+			if lp.GetName() == "mountpoint" {
+				if lp.GetValue() != mountpoint {
+					continue search
+				}
+			}
+		}
+		g := m.GetGauge()
+		return uint64(g.GetValue())
+	}
+	return 0
+}
+
+func getNetwork(family *dto.MetricFamily) uint64 {
+search:
+	for _, m := range family.GetMetric() {
+		for _, lp := range m.GetLabel() {
+			if lp.GetName() != "device" {
+				continue
+			}
+			device := lp.GetValue()
+			if strings.HasPrefix(device, "br-") ||
+				strings.HasPrefix(device, "docker") ||
+				strings.HasPrefix(device, "lo") ||
+				strings.HasPrefix(device, "veth") {
+				continue search
+			}
+		}
+		c := m.GetCounter()
+		return uint64(c.GetValue())
+	}
+	return 0
 }

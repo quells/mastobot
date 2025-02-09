@@ -50,8 +50,9 @@ var (
 	instance string
 	timeout  time.Duration
 
-	v  bool
-	vv bool
+	v      bool
+	vv     bool
+	dryRun bool
 )
 
 var rootCmd = &cobra.Command{
@@ -91,6 +92,7 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVarP(&v, "log_info", "v", false, "Log info level")
 	rootCmd.PersistentFlags().BoolVarP(&vv, "log_debug", "V", false, "Log debug level")
+	rootCmd.PersistentFlags().BoolVar(&dryRun, "dry-run", false, "Dry run")
 }
 
 func Execute() {
