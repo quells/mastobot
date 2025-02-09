@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.7/.schema/devbox.schema.json",
+  "packages": [
+    "go@1.23",
+    "zig@latest",
+    "darwin.apple_sdk.frameworks.Security"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'Welcome to devbox!' > /dev/null"
+    ],
+    "scripts": {
+      "build": [
+        "CGO_ENABLED=1 GOOS=linux GOARCH=amd64 CC='zig cc -target x86_64-linux-musl' CXX='zig c++ -target x86_64-linux-musl' go build -ldflags '-s -w -linkmode external -extldflags -static' -o mastobot ."
+      ]
+    }
+  }
+}

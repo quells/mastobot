@@ -30,6 +30,10 @@ $ mastobot app register --instance <instance> --name <appName> --visibility publ
 
 ## Build
 
+```bash
+$ devbox run build
+```
+
 ### Apple Silicon
 
 ```bash

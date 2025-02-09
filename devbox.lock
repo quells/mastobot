@@ -1,0 +1,121 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "darwin.apple_sdk.frameworks.Security": {
+      "resolved": "github:NixOS/nixpkgs/75a52265bda7fd25e06e3a67dee3f0354e73243c#darwin.apple_sdk.frameworks.Security",
+      "source": "nixpkg"
+    },
+    "go@1.23": {
+      "last_modified": "2025-02-07T11:26:36Z",
+      "resolved": "github:NixOS/nixpkgs/d98abf5cf5914e5e4e9d57205e3af55ca90ffc1d#go",
+      "source": "devbox-search",
+      "version": "1.23.5",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/nygq6zbzjqg8zkx8p9xh0ydvvi0v2vvv-go-1.23.5",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/nygq6zbzjqg8zkx8p9xh0ydvvi0v2vvv-go-1.23.5"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/f3psxd8yplxjxv5nzkhhrczlfdipqqas-go-1.23.5",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/f3psxd8yplxjxv5nzkhhrczlfdipqqas-go-1.23.5"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/xjyip7f73zvpbld41qgj0jspka4624jr-go-1.23.5",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/xjyip7f73zvpbld41qgj0jspka4624jr-go-1.23.5"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/kaajk63cgb8yrqvqvlmbss31b6nia854-go-1.23.5",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/kaajk63cgb8yrqvqvlmbss31b6nia854-go-1.23.5"
+        }
+      }
+    },
+    "zig@latest": {
+      "last_modified": "2025-02-05T23:13:39Z",
+      "resolved": "github:NixOS/nixpkgs/1da52dd49a127ad74486b135898da2cef8c62665#zig",
+      "source": "devbox-search",
+      "version": "0.13.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/d82ghz4hnidcnwzpj7wwsl8dkb43xqsf-zig-0.13.0",
+              "default": true
+            },
+            {
+              "name": "doc",
+              "path": "/nix/store/phajgfx25agqg1093a6if0sdsxcwv66a-zig-0.13.0-doc"
+            }
+          ],
+          "store_path": "/nix/store/d82ghz4hnidcnwzpj7wwsl8dkb43xqsf-zig-0.13.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/vp43nlb93rfk5jkcbs7zzm3gl88hfdn3-zig-0.13.0",
+              "default": true
+            },
+            {
+              "name": "doc",
+              "path": "/nix/store/5jvlmplajzc39qkp9hqya672sn7r480f-zig-0.13.0-doc"
+            }
+          ],
+          "store_path": "/nix/store/vp43nlb93rfk5jkcbs7zzm3gl88hfdn3-zig-0.13.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/h19rp00h0ahhfygrmwfza7wxmwm4chif-zig-0.13.0",
+              "default": true
+            },
+            {
+              "name": "doc",
+              "path": "/nix/store/5hsvfz4npfl7w12ggib3qa6kl6yr6z1l-zig-0.13.0-doc"
+            }
+          ],
+          "store_path": "/nix/store/h19rp00h0ahhfygrmwfza7wxmwm4chif-zig-0.13.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/1l5gb4773rbqjzv49wb4h9xlmaz2zs5h-zig-0.13.0",
+              "default": true
+            },
+            {
+              "name": "doc",
+              "path": "/nix/store/577rag5c5za5hmmhaynnl8mlpkdsi1x3-zig-0.13.0-doc"
+            }
+          ],
+          "store_path": "/nix/store/1l5gb4773rbqjzv49wb4h9xlmaz2zs5h-zig-0.13.0"
+        }
+      }
+    }
+  }
+}
