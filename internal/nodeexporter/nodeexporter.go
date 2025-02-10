@@ -63,7 +63,7 @@ func (m *NodeMetrics) Uptime() string {
 	if uptime < 48*time.Hour {
 		return uptime.String()
 	}
-	upDays := float64(uptime / (24 * time.Hour))
+	upDays := float64(uptime) / float64(24*time.Hour)
 	return fmt.Sprintf("%.1fd", upDays)
 }
 
